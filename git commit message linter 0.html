@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Commit Message Linter Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 1.1rem;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 1rem;
+        }
+
+        .commit-input {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            font-size: 16px;
+            font-family: 'SF Mono', Monaco, monospace;
+            transition: all 0.3s ease;
+            background: #fafafa;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .commit-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .score-card {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 24px;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .score-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" patternUnits="userSpaceOnUse" width="100" height="100"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.1"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.1"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            pointer-events: none;
+        }
+
+        .score-value {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .score-label {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .analysis-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .analysis-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            color: #1f2937;
+        }
+
+        .issue {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 16px;
+            margin: 8px 0;
+            border-radius: 12px;
+            border-left: 4px solid;
+        }
+
+        .issue-error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+        }
+
+        .issue-warning {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+        }
+
+        .issue-info {
+            background: #eff6ff;
+            border-left-color: #3b82f6;
+        }
+
+        .issue-success {
+            background: #f0fdf4;
+            border-left-color: #10b981;
+        }
+
+        .issue-icon {
+            font-size: 1.2rem;
+            margin-top: 2px;
+        }
+
+        .issue-content {
+            flex: 1;
+        }
+
+        .issue-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .issue-description {
+            color: #6b7280;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .examples {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .examples h3 {
+            margin-bottom: 16px;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .example-item {
+            background: white;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border-left: 3px solid #10b981;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 24px;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .buttons {
+                flex-direction: column;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Git Commit Linter Pro</h1>
+            <p>Professional-grade commit message analysis with conventional commit standards</p>
+        </div>
+
+        <div class="input-section">
+            <label class="input-label">
+                📝 Enter your commit message:
+            </label>
+            <textarea 
+                class="commit-input" 
+                id="commitInput" 
+                placeholder="feat: add user authentication with OAuth2 integration
+
+This commit introduces a comprehensive authentication system that supports multiple OAuth2 providers including Google, GitHub, and Microsoft. The implementation includes proper error handling, token refresh mechanisms, and secure session management.
+
+Closes #123"
+            ></textarea>
+        </div>
+
+        <div class="buttons">
+            <button class="btn btn-primary" onclick="analyzeCommit()">
+                🔍 Analyze Commit
+            </button>
+            <button class="btn btn-secondary" onclick="loadExample()">
+                📄 Load Example
+            </button>
+            <button class="btn btn-secondary" onclick="clearInput()">
+                🗑️ Clear
+            </button>
+            <button class="btn btn-secondary" onclick="copyToClipboard()">
+                📋 Copy Result
+            </button>
+        </div>
+
+        <div class="results" id="results">
+            <div class="score-card" id="scoreCard">
+                <div class="score-value" id="scoreValue">0</div>
+                <div class="score-label" id="scoreLabel">Analyzing...</div>
+            </div>
+
+            <div class="analysis-grid">
+                <div class="analysis-card">
+                    <h3>🔍 Issues Found</h3>
+                    <div id="issuesList"></div>
+                </div>
+                <div class="analysis-card">
+                    <h3>📊 Commit Statistics</h3>
+                    <div class="stats-grid" id="statsGrid"></div>
+                </div>
+            </div>
+
+            <div class="examples">
+                <h3>✨ Improvement Suggestions</h3>
+                <div id="suggestions"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const conventionalTypes = {
+            'feat': { emoji: '✨', description: 'A new feature' },
+            'fix': { emoji: '🐛', description: 'A bug fix' },
+            'docs': { emoji: '📚', description: 'Documentation only changes' },
+            'style': { emoji: '💎', description: 'Code style changes (formatting, etc)' },
+            'refactor': { emoji: '🔨', description: 'Code refactoring' },
+            'perf': { emoji: '🚀', description: 'Performance improvements' },
+            'test': { emoji: '🧪', description: 'Adding or updating tests' },
+            'build': { emoji: '🏗️', description: 'Build system or dependency changes' },
+            'ci': { emoji: '👷', description: 'CI configuration changes' },
+            'chore': { emoji: '🔧', description: 'Maintenance tasks' },
+            'revert': { emoji: '⏪', description: 'Revert a previous commit' }
+        };
+
+        const examples = [
+            "feat: add user authentication with OAuth2 integration\n\nThis commit introduces a comprehensive authentication system that supports multiple OAuth2 providers including Google, GitHub, and Microsoft. The implementation includes proper error handling, token refresh mechanisms, and secure session management.\n\nCloses #123",
+            "fix: resolve memory leak in data processing pipeline\n\nThe previous implementation was not properly disposing of event listeners, causing memory accumulation over time. This fix ensures all listeners are cleaned up appropriately.\n\nFixes #456",
+            "docs: update API documentation with new endpoint examples\n\nAdded comprehensive examples for the new user management endpoints including request/response formats and error handling scenarios.",
+            "refactor: optimize database queries for better performance\n\nRestructured the user repository to use more efficient queries and added proper indexing. This reduces average query time by 40%.\n\nBREAKING CHANGE: UserRepository.findAll() now returns a Promise"
+        ];
+
+        function analyzeCommit() {
+            const input = document.getElementById('commitInput').value.trim();
+            if (!input) {
+                alert('Please enter a commit message to analyze');
+                return;
+            }
+
+            const results = document.getElementById('results');
+            results.classList.add('show');
+            
+            const analysis = performAnalysis(input);
+            displayResults(analysis);
+        }
+
+        function performAnalysis(commitMessage) {
+            const lines = commitMessage.split('\n').filter(line => line.trim());
+            const firstLine = lines[0] || '';
+            const body = lines.slice(1).join('\n').trim();
+            
+            const issues = [];
+            let score = 100;
+            
+            // Analyze conventional commit format
+            const conventionalRegex = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?(!)?: .{1,50}/;
+            const typeMatch = firstLine.match(/^(\w+)(\(.+\))?(!)?: (.+)/);
+            
+            if (!conventionalRegex.test(firstLine)) {
+                if (!typeMatch) {
+                    issues.push({
+                        type: 'error',
+                        title: 'Invalid conventional commit format',
+                        description: 'Commit must start with a valid type (feat, fix, docs, etc.) followed by a colon and space.',
+                        severity: 20
+                    });
+                    score -= 20;
+                } else {
+                    const type = typeMatch[1];
+                    if (!conventionalTypes[type]) {
+                        issues.push({
+                            type: 'error',
+                            title: 'Unknown commit type',
+                            description: `"${type}" is not a recognized conventional commit type.`,
+                            severity: 15
+                        });
+                        score -= 15;
+                    }
+                }
+            }
+
+            // Check subject length
+            const subject = typeMatch ? typeMatch[4] : firstLine;
+            if (subject.length > 50) {
+                issues.push({
+                    type: 'warning',
+                    title: 'Subject line too long',
+                    description: `Subject is ${subject.length} characters. Keep it under 50 characters.`,
+                    severity: 10
+                });
+                score -= 10;
+            } else if (subject.length > 72) {
+                issues.push({
+                    type: 'error',
+                    title: 'Subject line extremely long',
+                    description: `Subject is ${subject.length} characters. This will be truncated in many Git tools.`,
+                    severity: 15
+                });
+                score -= 15;
+            }
+
+            // Check capitalization
+            if (subject && subject[0] !== subject[0].toLowerCase()) {
+                issues.push({
+                    type: 'warning',
+                    title: 'Subject should not be capitalized',
+                    description: 'Conventional commits use lowercase for the subject line.',
+                    severity: 5
+                });
+                score -= 5;
+            }
+
+            // Check for period at end
+            if (subject.endsWith('.')) {
+                issues.push({
+                    type: 'warning',
+                    title: 'Remove trailing period',
+                    description: 'Subject line should not end with a period.',
+                    severity: 3
+                });
+                score -= 3;
+            }
+
+            // Check body formatting
+            if (body) {
+                const bodyLines = body.split('\n');
+                
+                // Check for blank line after subject
+                if (lines.length > 1 && lines[1].trim() !== '') {
+                    issues.push({
+                        type: 'warning',
+                        title: 'Missing blank line after subject',
+                        description: 'Add a blank line between the subject and body.',
+                        severity: 5
+                    });
+                    score -= 5;
+                }
+
+                // Check body line length
+                const longLines = bodyLines.filter(line => line.length > 72);
+                if (longLines.length > 0) {
+                    issues.push({
+                        type: 'info',
+                        title: 'Body lines should wrap at 72 characters',
+                        description: `Found ${longLines.length} lines longer than 72 characters.`,
+                        severity: 3
+                    });
+                    score -= 3;
+                }
+
+                // Check for issue references
+                const hasIssueRef = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\d+/i.test(body);
+                if (hasIssueRef) {
+                    issues.push({
+                        type: 'success',
+                        title: 'Great! Issue reference found',
+                        description: 'Linking commits to issues improves traceability.',
+                        severity: 0
+                    });
+                    score += 5;
+                }
+
+                // Check for breaking changes
+                const hasBreakingChange = /BREAKING CHANGE:/i.test(body);
+                if (hasBreakingChange) {
+                    issues.push({
+                        type: 'info',
+                        title: 'Breaking change detected',
+                        description: 'Breaking changes are properly documented.',
+                        severity: 0
+                    });
+                    score += 5;
+                }
+            } else {
+                issues.push({
+                    type: 'info',
+                    title: 'Consider adding a commit body',
+                    description: 'A detailed body helps explain the "why" behind your changes.',
+                    severity: 2
+                });
+                score -= 2;
+            }
+
+            // Ensure score stays within bounds
+            score = Math.max(0, Math.min(100, score));
+
+            return {
+                score,
+                issues,
+                statistics: {
+                    subjectLength: subject.length,
+                    bodyLines: body ? body.split('\n').length : 0,
+                    totalLines: lines.length,
+                    wordCount: commitMessage.split(/\s+/).length,
+                    type: typeMatch ? typeMatch[1] : 'unknown'
+                }
+            };
+        }
+
+        function displayResults(analysis) {
+            // Update score
+            const scoreValue = document.getElementById('scoreValue');
+            const scoreLabel = document.getElementById('scoreLabel');
+            const scoreCard = document.getElementById('scoreCard');
+            
+            scoreValue.textContent = analysis.score;
+            
+            if (analysis.score >= 90) {
+                scoreLabel.textContent = 'Excellent! 🎉';
+                scoreCard.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+            } else if (analysis.score >= 75) {
+                scoreLabel.textContent = 'Good 👍';
+                scoreCard.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+            } else if (analysis.score >= 60) {
+                scoreLabel.textContent = 'Needs Improvement ⚠️';
+                scoreCard.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+            } else {
+                scoreLabel.textContent = 'Poor ❌';
+                scoreCard.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+            }
+
+            // Display issues
+            const issuesList = document.getElementById('issuesList');
+            if (analysis.issues.length === 0) {
+                issuesList.innerHTML = '<div class="issue issue-success"><div class="issue-icon">✅</div><div class="issue-content"><div class="issue-title">Perfect!</div><div class="issue-description">No issues found with your commit message.</div></div></div>';
+            } else {
+                issuesList.innerHTML = analysis.issues.map(issue => `
+                    <div class="issue issue-${issue.type}">
+                        <div class="issue-icon">${getIssueIcon(issue.type)}</div>
+                        <div class="issue-content">
+                            <div class="issue-title">${issue.title}</div>
+                            <div class="issue-description">${issue.description}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Display statistics
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${analysis.statistics.subjectLength}</div>
+                    <div class="stat-label">Subject Length</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${analysis.statistics.bodyLines}</div>
+                    <div class="stat-label">Body Lines</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${analysis.statistics.wordCount}</div>
+                    <div class="stat-label">Word Count</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${analysis.statistics.type}</div>
+                    <div class="stat-label">Type</div>
+                </div>
+            `;
+
+            // Display suggestions
+            const suggestions = document.getElementById('suggestions');
+            const suggestionList = generateSuggestions(analysis);
+            suggestions.innerHTML = suggestionList.map(suggestion => 
+                `<div class="example-item">${suggestion}</div>`
+            ).join('');
+        }
+
+        function getIssueIcon(type) {
+            const icons = {
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️',
+                success: '✅'
+            };
+            return icons[type] || 'ℹ️';
+        }
+
+        function generateSuggestions(analysis) {
+            const suggestions = [];
+            
+            if (analysis.score < 75) {
+                suggestions.push('feat: add comprehensive user authentication system');
+                suggestions.push('fix: resolve memory leak in event listener cleanup');
+                suggestions.push('docs: update API documentation with new examples');
+            }
+            
+            if (analysis.statistics.bodyLines === 0) {
+                suggestions.push('Consider adding a body that explains the "why" behind your changes');
+            }
+            
+            if (!analysis.statistics.type || analysis.statistics.type === 'unknown') {
+                suggestions.push('Use conventional commit types: feat, fix, docs, style, refactor, perf, test, build, ci, chore');
+            }
+            
+            return suggestions.length > 0 ? suggestions : ['Your commit message follows best practices! 🎉'];
+        }
+
+        function loadExample() {
+            const randomExample = examples[Math.floor(Math.random() * examples.length)];
+            document.getElementById('commitInput').value = randomExample;
+        }
+
+        function clearInput() {
+            document.getElementById('commitInput').value = '';
+            document.getElementById('results').classList.remove('show');
+        }
+
+        function copyToClipboard() {
+            const commitText = document.getElementById('commitInput').value;
+            if (!commitText.trim()) {
+                alert('No commit message to copy');
+                return;
+            }
+            
+            navigator.clipboard.writeText(commitText).then(() => {
+                alert('Commit message copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        // Auto-resize textarea
+        document.getElementById('commitInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    analyzeCommit();
+                } else if (e.key === 'l') {
+                    e.preventDefault();
+                    loadExample();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
