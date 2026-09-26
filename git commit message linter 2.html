@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Commit Message Linter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 100" fill="rgba(255,255,255,0.03)"><polygon points="0,0 1000,0 1000,60 0,100"/></svg>');
+            background-size: cover;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .commit-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+            transition: all 0.3s ease;
+            background: #fafbfc;
+        }
+
+        .commit-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .settings {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e1e5e9;
+        }
+
+        .settings h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1em;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-item input[type="checkbox"]:checked {
+            background: #667eea;
+            border-color: #667eea;
+        }
+
+        .checkbox-item input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .checkbox-item label {
+            font-size: 0.9em;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .results-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .score-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .score {
+            font-size: 3em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .score-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .results {
+            background: white;
+            border-radius: 15px;
+            border: 1px solid #e1e5e9;
+            overflow: hidden;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f3f4;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: background-color 0.2s ease;
+        }
+
+        .result-item:hover {
+            background: #f8f9fa;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-icon {
+            font-size: 1.2em;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .result-content {
+            flex: 1;
+        }
+
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .result-description {
+            font-size: 0.9em;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .severity-critical { color: #dc3545; }
+        .severity-error { color: #fd7e14; }
+        .severity-warning { color: #ffc107; }
+        .severity-info { color: #17a2b8; }
+        .severity-success { color: #28a745; }
+
+        .examples {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e1e5e9;
+            margin-top: 20px;
+        }
+
+        .examples h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1em;
+        }
+
+        .example-item {
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+            margin-bottom: 10px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 0.85em;
+        }
+
+        .example-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 15px;
+            opacity: 0.3;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .score {
+                font-size: 2.5em;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Git Commit Linter</h1>
+            <p>Professional commit message validation with conventional commit standards</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="commitMessage">Commit Message</label>
+                    <textarea 
+                        id="commitMessage" 
+                        class="commit-input" 
+                        placeholder="feat: add user authentication system
+
+Implement JWT-based authentication with login/logout functionality.
+Includes password hashing, token validation, and session management.
+
+- Added login and registration endpoints
+- Implemented JWT token generation and validation
+- Added middleware for protected routes
+- Updated user model with password hashing
+
+Closes #123"
+                    ></textarea>
+                </div>
+
+                <div class="settings">
+                    <h3>Validation Settings</h3>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="enforceConventional" checked>
+                            <label for="enforceConventional">Conventional Commits</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkLength" checked>
+                            <label for="checkLength">Length Limits</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkCapitalization" checked>
+                            <label for="checkCapitalization">Capitalization</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkPunctuation" checked>
+                            <label for="checkPunctuation">Punctuation</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkBreakingChanges" checked>
+                            <label for="checkBreakingChanges">Breaking Changes</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkScope" checked>
+                            <label for="checkScope">Scope Format</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="examples">
+                    <h3>✅ Good Examples</h3>
+                    <div class="example-item">feat(auth): add OAuth2 login support</div>
+                    <div class="example-item">fix: resolve memory leak in data processing</div>
+                    <div class="example-item">docs: update API documentation for v2.0</div>
+                    <div class="example-item">feat!: remove deprecated user endpoints</div>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <div class="score-card">
+                    <div class="score pulse" id="score">--</div>
+                    <div class="score-label">Quality Score</div>
+                </div>
+
+                <div class="results" id="results">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        <p>Enter a commit message to see validation results</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class CommitLinter {
+            constructor() {
+                this.conventionalTypes = [
+                    'feat', 'fix', 'docs', 'style', 'refactor', 
+                    'perf', 'test', 'build', 'ci', 'chore', 'revert'
+                ];
+                this.settings = {
+                    enforceConventional: true,
+                    checkLength: true,
+                    checkCapitalization: true,
+                    checkPunctuation: true,
+                    checkBreakingChanges: true,
+                    checkScope: true
+                };
+                this.init();
+            }
+
+            init() {
+                const textarea = document.getElementById('commitMessage');
+                const checkboxes = document.querySelectorAll('.checkbox-item input[type="checkbox"]');
+                
+                textarea.addEventListener('input', () => this.validateCommit());
+                checkboxes.forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        this.settings[e.target.id] = e.target.checked;
+                        this.validateCommit();
+                    });
+                });
+
+                // Initial validation if there's placeholder text
+                setTimeout(() => this.validateCommit(), 100);
+            }
+
+            validateCommit() {
+                const message = document.getElementById('commitMessage').value;
+                const results = [];
+                let score = 100;
+
+                if (!message.trim()) {
+                    this.displayResults([], 0);
+                    return;
+                }
+
+                const lines = message.split('\n').filter(line => line.trim());
+                const firstLine = lines[0] || '';
+                const hasBody = lines.length > 1;
+
+                // Conventional Commits validation
+                if (this.settings.enforceConventional) {
+                    const conventionalResult = this.validateConventionalFormat(firstLine);
+                    results.push(...conventionalResult.issues);
+                    score -= conventionalResult.penalty;
+                }
+
+                // Length validation
+                if (this.settings.checkLength) {
+                    const lengthResult = this.validateLength(firstLine, message);
+                    results.push(...lengthResult.issues);
+                    score -= lengthResult.penalty;
+                }
+
+                // Capitalization validation
+                if (this.settings.checkCapitalization) {
+                    const capResult = this.validateCapitalization(firstLine);
+                    results.push(...capResult.issues);
+                    score -= capResult.penalty;
+                }
+
+                // Punctuation validation
+                if (this.settings.checkPunctuation) {
+                    const punctResult = this.validatePunctuation(firstLine);
+                    results.push(...punctResult.issues);
+                    score -= punctResult.penalty;
+                }
+
+                // Breaking changes validation
+                if (this.settings.checkBreakingChanges) {
+                    const breakingResult = this.validateBreakingChanges(message);
+                    results.push(...breakingResult.issues);
+                    score -= breakingResult.penalty;
+                }
+
+                // Scope validation
+                if (this.settings.checkScope) {
+                    const scopeResult = this.validateScope(firstLine);
+                    results.push(...scopeResult.issues);
+                    score -= scopeResult.penalty;
+                }
+
+                // Additional quality checks
+                const qualityResult = this.validateQuality(message);
+                results.push(...qualityResult.issues);
+                score -= qualityResult.penalty;
+
+                score = Math.max(0, Math.min(100, score));
+                this.displayResults(results, score);
+            }
+
+            validateConventionalFormat(line) {
+                const issues = [];
+                let penalty = 0;
+
+                const conventionalRegex = /^(\w+)(\(.+\))?(!)?: .+/;
+                const match = line.match(conventionalRegex);
+
+                if (!match) {
+                    issues.push({
+                        severity: 'error',
+                        icon: '❌',
+                        title: 'Invalid Conventional Commit Format',
+                        description: 'Should follow: type(scope): description. Example: feat(auth): add login functionality'
+                    });
+                    penalty += 25;
+                } else {
+                    const [, type] = match;
+                    if (!this.conventionalTypes.includes(type)) {
+                        issues.push({
+                            severity: 'warning',
+                            icon: '⚠️',
+                            title: 'Unknown Commit Type',
+                            description: `"${type}" is not a standard type. Use: ${this.conventionalTypes.join(', ')}`
+                        });
+                        penalty += 10;
+                    } else {
+                        issues.push({
+                            severity: 'success',
+                            icon: '✅',
+                            title: 'Valid Conventional Commit Format',
+                            description: `Follows conventional commits standard with type "${type}"`
+                        });
+                    }
+                }
+
+                return { issues, penalty };
+            }
+
+            validateLength(firstLine, fullMessage) {
+                const issues = [];
+                let penalty = 0;
+
+                if (firstLine.length > 72) {
+                    issues.push({
+                        severity: 'error',
+                        icon: '📏',
+                        title: 'Subject Line Too Long',
+                        description: `${firstLine.length} characters. Keep under 72 characters for better readability.`
+                    });
+                    penalty += 15;
+                } else if (firstLine.length > 50) {
+                    issues.push({
+                        severity: 'warning',
+                        icon: '⚠️',
+                        title: 'Subject Line Longer Than Recommended',
+                        description: `${firstLine.length} characters. Consider keeping under 50 characters.`
+                    });
+                    penalty += 5;
+                } else {
+                    issues.push({
+                        severity: 'success',
+                        icon: '✅',
+                        title: 'Good Subject Line Length',
+                        description: `${firstLine.length} characters - within recommended limits.`
+                    });
+                }
+
+                const lines = fullMessage.split('\n');
+                const bodyLines = lines.slice(1).filter(line => line.trim());
+                
+                for (let i = 0; i < bodyLines.length; i++) {
+                    if (bodyLines[i].length > 80) {
+                        issues.push({
+                            severity: 'warning',
+                            icon: '📝',
+                            title: 'Body Line Too Long',
+                            description: `Line ${i + 2} is ${bodyLines[i].length} characters. Consider wrapping at 80 characters.`
+                        });
+                        penalty += 2;
+                        break; // Only report first occurrence
+                    }
+                }
+
+                return { issues, penalty };
+            }
+
+            validateCapitalization(line) {
+                const issues = [];
+                let penalty = 0;
+
+                const conventionalRegex = /^(\w+)(\(.+\))?(!)?: (.+)/;
+                const match = line.match(conventionalRegex);
+                
+                if (match) {
+                    const description = match[4];
+                    if (description[0] !== description[0].toLowerCase()) {
+                        issues.push({
+                            severity: 'warning',
+                            icon: '🔤',
+                            title: 'Subject Should Start with Lowercase',
+                            description: 'The description part should start with a lowercase letter.'
+                        });
+                        penalty += 5;
+                    } else {
+                        issues.push({
+                            severity: 'success',
+                            icon: '✅',
+                            title: 'Correct Capitalization',
+                            description: 'Subject starts with lowercase as recommended.'
+                        });
+                    }
+                }
+
+                return { issues, penalty };
+            }
+
+            validatePunctuation(line) {
+                const issues = [];
+                let penalty = 0;
+
+                if (line.endsWith('.') || line.endsWith('!') || line.endsWith('?')) {
+                    issues.push({
+                        severity: 'warning',
+                        icon: '❗',
+                        title: 'Avoid Ending Punctuation',
+                        description: 'Subject lines typically should not end with punctuation.'
+                    });
+                    penalty += 5;
+                } else {
+                    issues.push({
+                        severity: 'success',
+                        icon: '✅',
+                        title: 'Good Punctuation',
+                        description: 'No trailing punctuation in subject line.'
+                    });
+                }
+
+                return { issues, penalty };
+            }
+
+            validateBreakingChanges(message) {
+                const issues = [];
+                let penalty = 0;
+
+                const hasBreakingIndicator = message.includes('!:') || message.toLowerCase().includes('breaking change');
+                const hasFooter = /^BREAKING CHANGE:/m.test(message);
+
+                if (hasBreakingIndicator && !hasFooter) {
+                    issues.push({
+                        severity: 'info',
+                        icon: '💥',
+                        title: 'Breaking Change Detected',
+                        description: 'Consider adding a BREAKING CHANGE: footer to describe the breaking change.'
+                    });
+                } else if (hasBreakingIndicator && hasFooter) {
+                    issues.push({
+                        severity: 'success',
+                        icon: '✅',
+                        title: 'Breaking Change Well Documented',
+                        description: 'Breaking change is properly indicated and documented.'
+                    });
+                }
+
+                return { issues, penalty };
+            }
+
+            validateScope(line) {
+                const issues = [];
+                let penalty = 0;
+
+                const scopeRegex = /^(\w+)\(([^)]+)\)/;
+                const match = line.match(scopeRegex);
+
+                if (match) {
+                    const scope = match[2];
+                    if (scope.includes(' ')) {
+                        issues.push({
+                            severity: 'warning',
+                            icon: '🎯',
+                            title: 'Scope Contains Spaces',
+                            description: 'Scope should typically be a single word or kebab-case.'
+                        });
+                        penalty += 3;
+                    } else {
+                        issues.push({
+                            severity: 'success',
+                            icon: '✅',
+                            title: 'Well-Formatted Scope',
+                            description: `Scope "${scope}" follows good practices.`
+                        });
+                    }
+                }
+
+                return { issues, penalty };
+            }
+
+            validateQuality(message) {
+                const issues = [];
+                let penalty = 0;
+
+                const lines = message.split('\n');
+                const firstLine = lines[0] || '';
+                
+                // Check for imperative mood
+                const imperativeWords = ['add', 'fix', 'update', 'remove', 'implement', 'create', 'delete', 'modify', 'change', 'refactor'];
+                const conventionalRegex = /^(\w+)(\(.+\))?(!)?: (.+)/;
+                const match = firstLine.match(conventionalRegex);
+                
+                if (match) {
+                    const description = match[4].toLowerCase();
+                    const hasImperative = imperativeWords.some(word => description.startsWith(word));
+                    
+                    if (hasImperative) {
+                        issues.push({
+                            severity: 'success',
+                            icon: '✅',
+                            title: 'Uses Imperative Mood',
+                            description: 'Description uses imperative mood as recommended.'
+                        });
+                    } else if (description.startsWith('added') || description.startsWith('fixed') || description.startsWith('updated')) {
+                        issues.push({
+                            severity: 'info',
+                            icon: '💡',
+                            title: 'Consider Imperative Mood',
+                            description: 'Use imperative mood (e.g., "add" instead of "added").'
+                        });
+                        penalty += 3;
+                    }
+                }
+
+                // Check for empty body when it might be beneficial
+                if (lines.length === 1 && firstLine.length > 30) {
+                    issues.push({
+                        severity: 'info',
+                        icon: '💡',
+                        title: 'Consider Adding Body',
+                        description: 'For complex changes, consider adding a body to explain the why and how.'
+                    });
+                }
+
+                // Check for good body structure
+                if (lines.length > 2) {
+                    const hasBlankLine = lines[1] === '';
+                    if (!hasBlankLine) {
+                        issues.push({
+                            severity: 'warning',
+                            icon: '📝',
+                            title: 'Missing Blank Line',
+                            description: 'Add a blank line between subject and body.'
+                        });
+                        penalty += 5;
+                    } else {
+                        issues.push({
+                            severity: 'success',
+                            icon: '✅',
+                            title: 'Good Message Structure',
+                            description: 'Proper blank line separation between subject and body.'
+                        });
+                    }
+                }
+
+                return { issues, penalty };
+            }
+
+            displayResults(results, score) {
+                const scoreElement = document.getElementById('score');
+                const resultsElement = document.getElementById('results');
+
+                // Update score with color
+                scoreElement.textContent = Math.round(score);
+                scoreElement.className = 'score pulse';
+                
+                if (score >= 90) scoreElement.style.color = '#28a745';
+                else if (score >= 70) scoreElement.style.color = '#ffc107';
+                else if (score >= 50) scoreElement.style.color = '#fd7e14';
+                else scoreElement.style.color = '#dc3545';
+
+                // Clear previous results
+                resultsElement.innerHTML = '';
+
+                if (results.length === 0) {
+                    resultsElement.innerHTML = `
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                            <p>Enter a commit message to see validation results</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Sort results by severity
+                const severityOrder = { 'error': 0, 'warning': 1, 'info': 2, 'success': 3 };
+                results.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+                results.forEach(result => {
+                    const resultElement = document.createElement('div');
+                    resultElement.className = 'result-item';
+                    resultElement.innerHTML = `
+                        <div class="result-icon ${result.severity ? 'severity-' + result.severity : ''}">${result.icon}</div>
+                        <div class="result-content">
+                            <div class="result-title">${result.title}</div>
+                            <div class="result-description">${result.description}</div>
+                        </div>
+                    `;
+                    resultsElement.appendChild(resultElement);
+                });
+            }
+        }
+
+        // Initialize the linter when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new CommitLinter();
+        });
+    </script>
+</body>
+</html>
