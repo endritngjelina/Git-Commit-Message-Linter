@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Commit Message Linter - Professional Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255, 255, 255, 0.05) 10px,
+                rgba(255, 255, 255, 0.05) 20px
+            );
+            animation: slide 20s linear infinite;
+        }
+
+        @keyframes slide {
+            0% { transform: translateX(-50px) translateY(-50px); }
+            100% { transform: translateX(50px) translateY(50px); }
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            padding: 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+
+        .config-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .config-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+
+        .lint-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .lint-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .lint-button:active {
+            transform: translateY(0);
+        }
+
+        .results-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .score-card {
+            background: linear-gradient(135deg, #48CAE4 0%, #0077B6 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 119, 182, 0.3);
+        }
+
+        .score-number {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .score-label {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .results {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .result-item {
+            padding: 20px;
+            border-left: 4px solid;
+            margin-bottom: 1px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .result-item:hover {
+            background: #f8f9fa;
+            transform: translateX(5px);
+        }
+
+        .result-item.error {
+            border-left-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.05);
+        }
+
+        .result-item.warning {
+            border-left-color: #f39c12;
+            background: rgba(243, 156, 18, 0.05);
+        }
+
+        .result-item.info {
+            border-left-color: #3498db;
+            background: rgba(52, 152, 219, 0.05);
+        }
+
+        .result-item.success {
+            border-left-color: #27ae60;
+            background: rgba(39, 174, 96, 0.05);
+        }
+
+        .result-icon {
+            font-size: 1.5em;
+            min-width: 30px;
+        }
+
+        .result-content {
+            flex: 1;
+        }
+
+        .result-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .result-description {
+            color: #7f8c8d;
+            line-height: 1.5;
+        }
+
+        .suggestion {
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            border-left: 3px solid #27ae60;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .metric-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .examples-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .example-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #27ae60;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+        }
+
+        .example-label {
+            font-weight: 600;
+            color: #27ae60;
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .checkbox-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Git Commit Message Linter</h1>
+            <p>Professional-grade commit message analysis with conventional commit standards</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="commitMessage">📝 Commit Message</label>
+                    <textarea 
+                        id="commitMessage" 
+                        placeholder="Enter your commit message here...&#10;&#10;Example:&#10;feat(auth): add OAuth2 integration&#10;&#10;Implement OAuth2 authentication flow with Google and GitHub providers.&#10;Includes proper error handling and token refresh mechanism.&#10;&#10;Closes #123"
+                        spellcheck="false"
+                    ></textarea>
+                </div>
+                
+                <div class="config-section">
+                    <div class="config-title">
+                        ⚙️ Linting Configuration
+                    </div>
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="enforceConventional" checked>
+                            <label for="enforceConventional">Conventional Commits</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkLength" checked>
+                            <label for="checkLength">Length Limits</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkCapitalization" checked>
+                            <label for="checkCapitalization">Capitalization</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkPunctuation" checked>
+                            <label for="checkPunctuation">Punctuation</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkImperative" checked>
+                            <label for="checkImperative">Imperative Mood</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="checkReferences" checked>
+                            <label for="checkReferences">Issue References</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="lint-button" onclick="lintCommit()">
+                    🔍 Analyze Commit Message
+                </button>
+                
+                <div class="examples-section">
+                    <h3>✨ Good Examples</h3>
+                    <div class="example-item">
+                        <div class="example-label">Feature with scope and body:</div>
+                        feat(api): add user authentication endpoint<br><br>
+                        Implement JWT-based authentication with refresh tokens.<br>
+                        Includes rate limiting and proper error handling.<br><br>
+                        Closes #456
+                    </div>
+                    <div class="example-item">
+                        <div class="example-label">Bug fix with breaking change:</div>
+                        fix!: resolve memory leak in data processing<br><br>
+                        BREAKING CHANGE: The processData function now requires<br>
+                        an additional cleanup parameter.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="results-section">
+                <div class="score-card">
+                    <div class="score-number" id="scoreNumber">--</div>
+                    <div class="score-label">Commit Quality Score</div>
+                </div>
+                
+                <div class="metrics">
+                    <div class="metric-card">
+                        <div class="metric-value" id="errorCount">0</div>
+                        <div class="metric-label">Errors</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="warningCount">0</div>
+                        <div class="metric-label">Warnings</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value" id="infoCount">0</div>
+                        <div class="metric-label">Suggestions</div>
+                    </div>
+                </div>
+                
+                <div class="results" id="results">
+                    <div class="result-item info">
+                        <div class="result-icon">ℹ️</div>
+                        <div class="result-content">
+                            <div class="result-title">Ready for Analysis</div>
+                            <div class="result-description">
+                                Enter your commit message and click "Analyze Commit Message" to get detailed feedback on conventional commit standards, best practices, and improvement suggestions.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Comprehensive commit message linting system
+        class CommitLinter {
+            constructor() {
+                this.conventionalTypes = [
+                    'feat', 'fix', 'docs', 'style', 'refactor', 'perf', 
+                    'test', 'build', 'ci', 'chore', 'revert'
+                ];
+                
+                this.imperativeWords = [
+                    'add', 'remove', 'fix', 'update', 'improve', 'implement', 
+                    'create', 'delete', 'modify', 'change', 'enhance', 'optimize',
+                    'refactor', 'clean', 'simplify', 'reorganize', 'rename',
+                    'move', 'extract', 'merge', 'split', 'convert'
+                ];
+                
+                this.nonImperativePatterns = [
+                    /^(added|adding|adds)/i,
+                    /^(removed|removing|removes)/i,
+                    /^(fixed|fixing|fixes)/i,
+                    /^(updated|updating|updates)/i,
+                    /^(improved|improving|improves)/i,
+                    /^(implemented|implementing|implements)/i,
+                    /^(created|creating|creates)/i,
+                    /^(deleted|deleting|deletes)/i,
+                    /^(modified|modifying|modifies)/i,
+                    /^(changed|changing|changes)/i
+                ];
+            }
+
+            lint(message, config) {
+                const results = [];
+                let score = 100;
+                
+                if (!message.trim()) {
+                    results.push({
+                        type: 'error',
+                        icon: '❌',
+                        title: 'Empty Commit Message',
+                        description: 'Commit message cannot be empty.',
+                        score: -50
+                    });
+                    return { results, score: 0 };
+                }
+
+                const lines = message.split('\n');
+                const subject = lines[0];
+                const body = lines.slice(2).join('\n');
+
+                // Check conventional commit format
+                if (config.enforceConventional) {
+                    this.checkConventionalFormat(subject, results);
+                }
+
+                // Check length constraints
+                if (config.checkLength) {
+                    this.checkLength(subject, body, results);
+                }
+
+                // Check capitalization
+                if (config.checkCapitalization) {
+                    this.checkCapitalization(subject, results);
+                }
+
+                // Check punctuation
+                if (config.checkPunctuation) {
+                    this.checkPunctuation(subject, results);
+                }
+
+                // Check imperative mood
+                if (config.checkImperative) {
+                    this.checkImperativeMood(subject, results);
+                }
+
+                // Check issue references
+                if (config.checkReferences) {
+                    this.checkIssueReferences(message, results);
+                }
+
+                // Additional advanced checks
+                this.checkBreakingChanges(message, results);
+                this.checkBodyStructure(body, results);
+                this.checkSubjectClarity(subject, results);
+
+                // Calculate final score
+                const totalDeduction = results.reduce((sum, result) => sum + (result.score || 0), 0);
+                score = Math.max(0, score + totalDeduction);
+
+                return { results, score };
+            }
+
+            checkConventionalFormat(subject, results) {
+                const conventionalRegex = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?(!)?:\s*.+/;
+                
+                if (!conventionalRegex.test(subject)) {
+                    results.push({
+                        type: 'error',
+                        icon: '🚫',
+                        title: 'Non-Conventional Format',
+                        description: 'Subject line should follow conventional commit format: type(scope): description',
+                        suggestion: 'feat(api): add user authentication\nfix(ui): resolve button alignment issue',
+                        score: -25
+                    });
+                } else {
+                    const match = subject.match(/^([a-z]+)/);
+                    const type = match ? match[1] : '';
+                    
+                    if (!this.conventionalTypes.includes(type)) {
+                        results.push({
+                            type: 'warning',
+                            icon: '⚠️',
+                            title: 'Unknown Commit Type',
+                            description: `"${type}" is not a standard conventional commit type.`,
+                            suggestion: `Use: ${this.conventionalTypes.join(', ')}`,
+                            score: -10
+                        });
+                    } else {
+                        results.push({
+                            type: 'success',
+                            icon: '✅',
+                            title: 'Conventional Format',
+                            description: 'Subject follows conventional commit format correctly.',
+                            score: 5
+                        });
+                    }
+                }
+            }
+
+            checkLength(subject, body, results) {
+                if (subject.length > 72) {
+                    results.push({
+                        type: 'error',
+                        icon: '📏',
+                        title: 'Subject Too Long',
+                        description: `Subject line is ${subject.length} characters. Should be ≤72 characters.`,
+                        score: -15
+                    });
+                } else if (subject.length > 50) {
+                    results.push({
+                        type: 'warning',
+                        icon: '📐',
+                        title: 'Subject Could Be Shorter',
+                        description: `Subject line is ${subject.length} characters. Consider keeping it ≤50 characters.`,
+                        score: -5
+                    });
+                } else {
+                    results.push({
+                        type: 'success',
+                        icon: '📏',
+                        title: 'Good Subject Length',
+                        description: `Subject line is ${subject.length} characters (optimal length).`,
+                        score: 3
+                    });
+                }
+
+                if (body && body.length > 0) {
+                    const bodyLines = body.split('\n');
+                    const longLines = bodyLines.filter(line => line.length > 72);
+                    
+                    if (longLines.length > 0) {
+                        results.push({
+                            type: 'warning',
+                            icon: '📝',
+                            title: 'Long Body Lines',
+                            description: `${longLines.length} body line(s) exceed 72 characters.`,
+                            score: -3
+                        });
+                    }
+                }
+            }
+
+            checkCapitalization(subject, results) {
+                const description = subject.includes(':') ? subject.split(':')[1].trim() : subject;
+                
+                if (description && /^[a-z]/.test(description)) {
+                    results.push({
+                        type: 'warning',
+                        icon: '🔤',
+                        title: 'Subject Should Be Capitalized',
+                        description: 'The description part should start with a capital letter.',
+                        suggestion: description.charAt(0).toUpperCase() + description.slice(1),
+                        score: -5
+                    });
+                }
+            }
+
+            checkPunctuation(subject, results) {
+                if (subject.endsWith('.') || subject.endsWith('!') || subject.endsWith('?')) {
+                    results.push({
+                        type: 'warning',
+                        icon: '🔸',
+                        title: 'Avoid Ending Punctuation',
+                        description: 'Subject line should not end with punctuation.',
+                        score: -3
+                    });
+                } else {
+                    results.push({
+                        type: 'success',
+                        icon: '✨',
+                        title: 'Proper Punctuation',
+                        description: 'Subject line punctuation is correct.',
+                        score: 2
+                    });
+                }
+            }
+
+            checkImperativeMood(subject, results) {
+                const description = subject.includes(':') ? subject.split(':')[1].trim() : subject;
+                
+                const hasNonImperative = this.nonImperativePatterns.some(pattern => 
+                    pattern.test(description)
+                );
+                
+                if (hasNonImperative) {
+                    results.push({
+                        type: 'warning',
+                        icon: '📢',
+                        title: 'Use Imperative Mood',
+                        description: 'Subject should use imperative mood (e.g., "add" not "added").',
+                        suggestion: 'Use: add, fix, update, remove, implement',
+                        score: -8
+                    });
+                } else {
+                    const firstWord = description.toLowerCase().split(' ')[0];
+                    if (this.imperativeWords.includes(firstWord)) {
+                        results.push({
+                            type: 'success',
+                            icon: '💬',
+                            title: 'Imperative Mood',
+                            description: 'Subject uses proper imperative mood.',
+                            score: 3
+                        });
+                    }
+                }
+            }
+
+            checkIssueReferences(message, results) {
+                const issuePatterns = [
+                    /closes?\s+#\d+/i,
+                    /fixes?\s+#\d+/i,
+                    /resolves?\s+#\d+/i,
+                    /#\d+/g
+                ];
+                
+                const hasIssueRef = issuePatterns.some(pattern => pattern.test(message));
+                
+                if (hasIssueRef) {
+                    results.push({
+                        type: 'success',
+                        icon: '🔗',
+                        title: 'Issue Reference Found',
+                        description: 'Commit includes issue/ticket references.',
+                        score: 5
+                    });
+                } else {
+                    results.push({
+                        type: 'info',
+                        icon: 'ℹ️',
+                        title: 'Consider Adding Issue Reference',
+                        description: 'Link to relevant issues using "Closes #123" or "Fixes #456".',
+                        score: 0
+                    });
+                }
+            }
+
+            checkBreakingChanges(message, results) {
+                const hasBreakingChange = /BREAKING CHANGE:/i.test(message) || message.includes('!:');
+                
+                if (hasBreakingChange) {
+                    results.push({
+                        type: 'info',
+                        icon: '💥',
+                        title: 'Breaking Change Detected',
+                        description: 'Commit properly indicates breaking changes.',
+                        score: 5
+                    });
+                }
+            }
+
+            checkBodyStructure(body, results) {
+                if (!body || body.trim().length === 0) {
+                    results.push({
+                        type: 'info',
+                        icon: '📋',
+                        title: 'Consider Adding Body',
+                        description: 'A detailed body can provide context for complex changes.',
+                        score: 0
+                    });
+                } else if (body.trim().length > 50) {
+                    results.push({
+                        type: 'success',
+                        icon: '📄',
+                        title: 'Detailed Body',
+                        description: 'Commit includes a detailed explanation.',
+                        score: 8
+                    });
+                }
+            }
+
+            checkSubjectClarity(subject, results) {
+                const vague = ['update', 'fix', 'change', 'modify'];
+                const description = subject.includes(':') ? subject.split(':')[1].trim() : subject;
+                const firstWord = description.toLowerCase().split(' ')[0];
+                
+                if (vague.includes(firstWord) && description.split(' ').length < 3) {
+                    results.push({
+                        type: 'warning',
+                        icon: '🤔',
+                        title: 'Subject Could Be More Specific',
+                        description: 'Consider being more specific about what was changed.',
+                        suggestion: 'Instead of "fix bug", use "fix login validation error"',
+                        score: -5
+                    });
+                }
+            }
+        }
+
+        const linter = new CommitLinter();
+
+        function lintCommit() {
+            const message = document.getElementById('commitMessage').value;
+            const config = {
+                enforceConventional: document.getElementById('enforceConventional').checked,
+                checkLength: document.getElementById('checkLength').checked,
+                checkCapitalization: document.getElementById('checkCapitalization').checked,
+                checkPunctuation: document.getElementById('checkPunctuation').checked,
+                checkImperative: document.getElementById('checkImperative').checked,
+                checkReferences: document.getElementById('checkReferences').checked
+            };
+
+            const { results, score } = linter.lint(message, config);
+            displayResults(results, score);
+        }
+
+        function displayResults(results, score) {
+            const resultsContainer = document.getElementById('results');
+            const scoreElement = document.getElementById('scoreNumber');
+            const errorCount = document.getElementById('errorCount');
+            const warningCount = document.getElementById('warningCount');
+            const infoCount = document.getElementById('infoCount');
+
+            // Update score with animation
+            scoreElement.textContent = score;
+            scoreElement.className = 'score-number pulse';
+            setTimeout(() => scoreElement.classList.remove('pulse'), 2000);
+
+            // Update metrics
+            errorCount.textContent = results.filter(r => r.type === 'error').length;
+            warningCount.textContent = results.filter(r => r.type === 'warning').length;
+            infoCount.textContent = results.filter(r => r.type === 'info' || r.type === 'success').length;
+
+            // Clear and populate results
+            resultsContainer.innerHTML = '';
+            
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="result-item success">
+                        <div class="result-icon">🎉</div>
+                        <div class="result-content">
+                            <div class="result-title">Perfect Commit!</div>
+                            <div class="result-description">Your commit message follows all best practices.</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            results.forEach(result => {
+                const resultElement = document.createElement('div');
+                resultElement.className = `result-item ${result.type}`;
+                
+                resultElement.innerHTML = `
+                    <div class="result-icon">${result.icon}</div>
+                    <div class="result-content">
+                        <div class="result-title">${result.title}</div>
+                        <div class="result-description">${result.description}</div>
+                        ${result.suggestion ? `<div class="suggestion">💡 Suggestion: ${result.suggestion}</div>` : ''}
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(resultElement);
+            });
+        }
+
+        // Auto-lint on input change (debounced)
+        let timeout;
+        document.getElementById('commitMessage').addEventListener('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(lintCommit, 500);
+        });
+
+        // Initialize with example
+        document.addEventListener('DOMContentLoaded', function() {
+            const exampleCommit = `feat(auth): add OAuth2 integration
+
+Implement OAuth2 authentication flow with Google and GitHub providers.
+Includes proper error handling and token refresh mechanism.
+
+- Add OAuth2 client configuration
+- Implement token validation middleware  
+- Update user model to store provider info
+
+Closes #123`;
+            
+            document.getElementById('commitMessage').value = exampleCommit;
+            lintCommit();
+        });
+    </script>
+</body>
+</html>
