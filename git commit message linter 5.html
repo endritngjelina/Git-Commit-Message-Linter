@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure DevOps Git Commit Intelligence Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --ms-blue: #0078d4;
+            --ms-dark-blue: #005a9e;
+            --ms-purple: #5c2d91;
+            --ms-teal: #008575;
+            --ms-orange: #ca5010;
+            --ms-red: #d13438;
+            --ms-gray: #323130;
+            --surface-primary: rgba(255, 255, 255, 0.98);
+            --surface-secondary: rgba(248, 249, 250, 0.95);
+            --shadow-primary: 0 8px 32px rgba(0, 120, 212, 0.12);
+            --shadow-elevated: 0 16px 64px rgba(0, 120, 212, 0.18);
+            --border-radius: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0078d4 0%, #005a9e 25%, #5c2d91 50%, #008575 75%, #ca5010 100%);
+            background-size: 400% 400%;
+            background-attachment: fixed;
+            animation: microsoftGradient 20s ease infinite;
+            min-height: 100vh;
+            color: var(--ms-gray);
+            overflow-x: hidden;
+        }
+
+        @keyframes microsoftGradient {
+            0%, 100% { background-position: 0% 50%; }
+            25% { background-position: 100% 0%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(0, 120, 212, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(92, 45, 145, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(0, 133, 117, 0.15) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-container {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid rgba(0, 120, 212, 0.1);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            padding: 0 32px;
+            box-shadow: var(--shadow-primary);
+        }
+
+        .ms-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 600;
+            color: var(--ms-blue);
+            font-size: 18px;
+        }
+
+        .ms-squares {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 2px;
+            width: 20px;
+            height: 20px;
+        }
+
+        .ms-square {
+            border-radius: 1px;
+        }
+
+        .ms-square:nth-child(1) { background: #f25022; }
+        .ms-square:nth-child(2) { background: #7fba00; }
+        .ms-square:nth-child(3) { background: #00a4ef; }
+        .ms-square:nth-child(4) { background: #ffb900; }
+
+        .nav-items {
+            margin-left: auto;
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-item {
+            color: var(--ms-gray);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: var(--transition);
+        }
+
+        .nav-item:hover {
+            background: rgba(0, 120, 212, 0.08);
+            color: var(--ms-blue);
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 100px auto 40px;
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 32px;
+            padding: 0 20px;
+        }
+
+        .primary-panel {
+            background: var(--surface-primary);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-radius: 16px;
+            border: 1px solid rgba(0, 120, 212, 0.1);
+            box-shadow: var(--shadow-elevated);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .primary-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f25022, #7fba00, #00a4ef, #ffb900);
+            background-size: 300% 100%;
+            animation: progressShimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes progressShimmer {
+            0%, 100% { background-position: 0% 0%; }
+            50% { background-position: 100% 0%; }
+        }
+
+        .panel-header {
+            padding: 32px 40px 24px;
+            border-bottom: 1px solid rgba(0, 120, 212, 0.08);
+        }
+
+        .panel-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--ms-blue), var(--ms-purple), var(--ms-teal));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            letter-spacing: -0.02em;
+        }
+
+        .panel-subtitle {
+            color: #605e5c;
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.5;
+        }
+
+        .input-section {
+            padding: 32px 40px;
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .input-label {
+            display: block;
+            font-weight: 600;
+            color: var(--ms-gray);
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .commit-textarea {
+            width: 100%;
+            min-height: 160px;
+            padding: 20px;
+            border: 2px solid #e1dfdd;
+            border-radius: var(--border-radius);
+            font-family: 'Cascadia Code', 'SF Mono', Monaco, monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            resize: vertical;
+            transition: var(--transition);
+            background: #faf9f8;
+            color: var(--ms-gray);
+        }
+
+        .commit-textarea:focus {
+            outline: none;
+            border-color: var(--ms-blue);
+            box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2);
+            background: white;
+        }
+
+        .ai-suggestions {
+            margin-top: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .suggestion-chip {
+            background: rgba(0, 120, 212, 0.08);
+            color: var(--ms-blue);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid rgba(0, 120, 212, 0.2);
+        }
+
+        .suggestion-chip:hover {
+            background: rgba(0, 120, 212, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .action-bar {
+            padding: 24px 40px 32px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--ms-blue);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 120, 212, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: var(--ms-dark-blue);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0, 120, 212, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--ms-blue);
+            border: 1px solid var(--ms-blue);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 120, 212, 0.05);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .widget {
+            background: var(--surface-primary);
+            backdrop-filter: blur(20px) saturate(180%);
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(0, 120, 212, 0.1);
+            box-shadow: var(--shadow-primary);
+            overflow: hidden;
+        }
+
+        .widget-header {
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid rgba(0, 120, 212, 0.08);
+            font-weight: 600;
+            color: var(--ms-gray);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .widget-content {
+            padding: 20px 24px 24px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 16px;
+            background: var(--surface-secondary);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 120, 212, 0.05);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--ms-blue);
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #605e5c;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .results-panel {
+            margin-top: 32px;
+            padding: 0 40px 40px;
+            display: none;
+        }
+
+        .results-panel.show {
+            display: block;
+            animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .score-dashboard {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .score-main {
+            background: linear-gradient(135deg, var(--ms-blue), var(--ms-dark-blue));
+            color: white;
+            padding: 32px;
+            border-radius: var(--border-radius);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .score-main::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            animation: scoreShimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes scoreShimmer {
+            0%, 100% { transform: translateX(-100%); }
+            50% { transform: translateX(100%); }
+        }
+
+        .score-number {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .score-grade {
+            font-size: 1.2rem;
+            font-weight: 600;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .score-detail {
+            background: var(--surface-primary);
+            padding: 24px;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(0, 120, 212, 0.1);
+            text-align: center;
+        }
+
+        .detail-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--ms-blue);
+            margin-bottom: 8px;
+        }
+
+        .detail-label {
+            font-size: 14px;
+            color: #605e5c;
+            font-weight: 500;
+        }
+
+        .analysis-tabs {
+            display: flex;
+            border-bottom: 2px solid #f3f2f1;
+            margin-bottom: 24px;
+        }
+
+        .tab-button {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            font-weight: 600;
+            color: #605e5c;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .tab-button.active {
+            color: var(--ms-blue);
+            border-bottom-color: var(--ms-blue);
+        }
+
+        .tab-button:hover {
+            color: var(--ms-blue);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .issues-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .issue-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 20px;
+            background: var(--surface-secondary);
+            border-radius: var(--border-radius);
+            border-left: 4px solid;
+            transition: var(--transition);
+        }
+
+        .issue-item:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-primary);
+        }
+
+        .issue-error { border-left-color: var(--ms-red); }
+        .issue-warning { border-left-color: var(--ms-orange); }
+        .issue-info { border-left-color: var(--ms-blue); }
+        .issue-success { border-left-color: var(--ms-teal); }
+
+        .issue-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .issue-error .issue-icon { background: var(--ms-red); }
+        .issue-warning .issue-icon { background: var(--ms-orange); }
+        .issue-info .issue-icon { background: var(--ms-blue); }
+        .issue-success .issue-icon { background: var(--ms-teal); }
+
+        .issue-content {
+            flex: 1;
+        }
+
+        .issue-title {
+            font-weight: 600;
+            color: var(--ms-gray);
+            margin-bottom: 6px;
+            font-size: 15px;
+        }
+
+        .issue-description {
+            color: #605e5c;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .ai-insights {
+            background: linear-gradient(135deg, rgba(0, 120, 212, 0.03), rgba(92, 45, 145, 0.03));
+            border: 1px solid rgba(0, 120, 212, 0.1);
+            border-radius: var(--border-radius);
+            padding: 24px;
+            margin-top: 24px;
+        }
+
+        .ai-insights-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .ai-badge {
+            background: linear-gradient(135deg, var(--ms-blue), var(--ms-purple));
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .copilot-suggestions {
+            display: grid;
+            gap: 16px;
+        }
+
+        .suggestion-item {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 120, 212, 0.1);
+            font-family: 'Cascadia Code', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .suggestion-item::before {
+            content: '✨';
+            position: absolute;
+            top: -8px;
+            right: 12px;
+            background: white;
+            padding: 0 4px;
+            font-size: 16px;
+        }
+
+        .floating-assistant {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, var(--ms-blue), var(--ms-purple));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: var(--shadow-elevated);
+            transition: var(--transition);
+            z-index: 1000;
+        }
+
+        .floating-assistant:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 48px rgba(0, 120, 212, 0.3);
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #f3f2f1;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--ms-blue), var(--ms-teal));
+            border-radius: 2px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .team-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .team-metric {
+            background: var(--surface-secondary);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            border: 1px solid rgba(0, 120, 212, 0.05);
+            text-align: center;
+        }
+
+        .team-metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--ms-blue);
+            margin-bottom: 8px;
+        }
+
+        .team-metric-label {
+            font-size: 12px;
+            color: #605e5c;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                max-width: 800px;
+            }
+            
+            .sidebar {
+                order: -1;
+            }
+            
+            .score-dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-bar {
+                padding: 0 16px;
+            }
+            
+            .nav-items {
+                display: none;
+            }
+            
+            .main-container {
+                margin-top: 80px;
+                padding: 0 16px;
+            }
+            
+            .panel-header,
+            .input-section,
+            .action-bar,
+            .results-panel {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 16px;
+            background: rgba(0, 120, 212, 0.05);
+            border-radius: var(--border-radius);
+            margin-top: 16px;
+        }
+
+        .typing-indicator.show {
+            display: flex;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--ms-blue);
+            border-radius: 50%;
+            animation: typingBounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typingBounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Microsoft-style Header -->
+        <header class="header-bar">
+            <div class="ms-logo">
+                <div class="ms-squares">
+                    <div class="ms-square"></div>
+                    <div class="ms-square"></div>
+                    <div class="ms-square"></div>
+                    <div class="ms-square"></div>
+                </div>
+                Azure DevOps Intelligence
+            </div>
+            <nav class="nav-items">
+                <a href="#" class="nav-item">Dashboard</a>
+                <a href="#" class="nav-item">Analytics</a>
+                <a href="#" class="nav-item">Copilot</a>
+                <a href="#" class="nav-item">Settings</a>
+            </nav>
+        </header>
+
+        <div class="main-container">
+            <!-- Primary Panel -->
+            <div class="primary-panel">
+                <div class="panel-header">
+                    <h1 class="panel-title">Git Commit Intelligence</h1>
+                    <p class="panel-subtitle">AI-powered commit message analysis with enterprise-grade insights and Microsoft Copilot integration</p>
+                </div>
+
+                <div class="input-section">
+                    <div class="input-group">
+                        <label class="input-label">Commit Message</label>
+                        <textarea 
+                            class="commit-textarea" 
+                            id="commitInput" 
+                            placeholder="feat: implement Azure AD authentication with multi-tenant support
+
+This commit introduces comprehensive Azure Active Directory integration supporting multi-tenant scenarios. The implementation includes proper token validation, role-based access control, and seamless single sign-on experience.
+
+Key changes:
+- Added Azure AD service configuration
+- Implemented JWT token validation middleware  
+- Created role-based authorization decorators
+- Added comprehensive unit and integration tests
+
+Closes #DEV-1234
+Breaking Change: Authentication middleware now requires Azure AD configuration"
+                        ></textarea>
+                        
+                        <div class="ai-suggestions" id="aiSuggestions">
+                            <div class="suggestion-chip" onclick="applySuggestion('feat: ')">feat: new feature</div>
+                            <div class="suggestion-chip" onclick="applySuggestion('fix: ')">fix: bug fix</div>
+                            <div class="suggestion-chip" onclick="applySuggestion('docs: ')">docs: documentation</div>
+                            <div class="suggestion-chip" onclick="applySuggestion('refactor: ')">refactor: code improvement</div>
+                        </div>
+                    </div>
+
+                    <div class="typing-indicator" id="typingIndicator">
+                        <div class="typing-dots">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                        <span>Copilot is analyzing your commit...</span>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn btn-primary" onclick="analyzeWithAI()">
+                        🤖 Analyze with Copilot
+                    </button>
+                    <button class="btn btn-secondary" onclick="generateCommit()">
+                        ✨ Generate Commit
+                    </button>
+                    <button class="btn btn-secondary" onclick="loadTemplate()">
+                        📄 Load Template
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportReport()">
+                        📊 Export Report
+                    </button>
+                </div>
+
+                <!-- Results Panel -->
+                <div class="results-panel" id="resultsPanel">
+                    <div class="score-dashboard">
+                        <div class="score-main">
+                            <div class="score-number" id="scoreNumber">0</div>
+                            <div class="score-grade" id="scoreGrade">Analyzing...</div>
+                        </div>
+                        <div class="score-detail">
+                            <div class="detail-value" id="complianceScore">0%</div>
+                            <div class="detail-label">Policy Compliance</div>
+                        </div>
+                        <div class="score-detail">
+                            <div class="detail-value" id="qualityScore">0</div>
+                            <div class="detail-label">Quality Index</div>
+                        </div>
+                    </div>
+
+                    <div class="analysis-tabs">
+                        <button class="tab-button active" onclick="showTab('issues')">Issues & Suggestions</button>
+                        <button class="tab-button" onclick="showTab('insights')">AI Insights</button>
+                        <button class="tab-button" onclick="showTab('metrics')">Team Metrics</button>
+                    </div>
+
+                    <div class="tab-content active" id="issuesTab">
+                        <div class="issues-list" id="issuesList"></div>
+                    </div>
+
+                    <div class="tab-content" id="insightsTab">
+                        <div class="ai-insights">
+                            <div class="ai-insights-header">
+                                <span class="ai-badge">Copilot AI</span>
+                                <h3>Intelligent Recommendations</h3>
+                            </div>
+                            <div class="copilot-suggestions" id="copilotSuggestions"></div>
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="metricsTab">
+                        <div class="team-metrics" id="teamMetrics"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Real-time Metrics -->
+                <div class="widget">
+                    <div class="widget-header">
+                        📊 Live Analytics
+                    </div>
+                    <div class="widget-content">
+                        <div class="metrics-grid">
+                            <div class="metric">
+                                <div class="metric-value" id="todayCommits">0</div>
+                                <div class="metric-label">Today</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value" id="weekCommits">0</div>
+                                <div class="metric-label">This Week</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value" id="avgScore">0</div>
+                                <div class="metric-label">Avg Score</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value" id="compliance">0%</div>
+                                <div class="metric-label">Compliance</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Team Performance -->
+                <div class="widget">
+                    <div class="widget-header">
+                        👥 Team Performance
+                    </div>
+                    <div class="widget-content">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 78%"></div>
+                        </div>
+                        <p style="font-size: 12px; color: #605e5c; margin-top: 8px;">Team Quality Score: 78/100</p>
+                        
+                        <div style="margin-top: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="font-size: 12px; color: #605e5c;">Conventional Commits</span>
+                                <span style="font-size: 12px; font-weight: 600; color: var(--ms-teal);">92%</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="font-size: 12px; color: #605e5c;">Issue References</span>
+                                <span style="font-size: 12px; font-weight: 600; color: var(--ms-blue);">85%</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="font-size: 12px; color: #605e5c;">Breaking Changes</span>
+                                <span style="font-size: 12px; font-weight: 600; color: var(--ms-orange);">12%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="widget">
+                    <div class="widget-header">
+                        ⚡ Quick Actions
+                    </div>
+                    <div class="widget-content">
+                        <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px;" onclick="openCopilotChat()">
+                            💬 Chat with Copilot
+                        </button>
+                        <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px;" onclick="viewHistory()">
+                            📈 View History
+                        </button>
+                        <button class="btn btn-secondary" style="width: 100%;" onclick="configureRules()">
+                            ⚙️ Configure Rules
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Copilot Assistant -->
+        <div class="floating-assistant" onclick="toggleCopilot()">
+            🤖
+        </div>
+    </div>
+
+    <script>
+        // Microsoft-style enterprise data and configuration
+        const enterpriseConfig = {
+            azureAD: {
+                tenantId: 'demo-tenant-id',
+                clientId: 'demo-client-id'
+            },
+            policies: {
+                requireConventionalCommits: true,
+                requireIssueReference: true,
+                maxSubjectLength: 50,
+                requireBreakingChangeDoc: true,
+                enforceSemVer: true
+            },
+            aiInsights: {
+                copilotEnabled: true,
+                sentimentAnalysis: true,
+                codeQualityPrediction: true,
+                teamProductivityInsights: true
+            }
+        };
+
+        const conventionalTypes = {
+            'feat': { emoji: '✨', description: 'New feature', color: '#7fba00' },
+            'fix': { emoji: '🐛', description: 'Bug fix', color: '#d13438' },
+            'docs': { emoji: '📚', description: 'Documentation', color: '#0078d4' },
+            'style': { emoji: '💎', description: 'Code style', color: '#5c2d91' },
+            'refactor': { emoji: '🔨', description: 'Code refactoring', color: '#008575' },
+            'perf': { emoji: '🚀', description: 'Performance improvement', color: '#ca5010' },
+            'test': { emoji: '🧪', description: 'Tests', color: '#0078d4' },
+            'build': { emoji: '🏗️', description: 'Build system', color: '#605e5c' },
+            'ci': { emoji: '👷', description: 'CI/CD', color: '#0078d4' },
+            'chore': { emoji: '🔧', description: 'Maintenance', color: '#605e5c' },
+            'revert': { emoji: '⏪', description: 'Revert changes', color: '#d13438' },
+            'security': { emoji: '🔒', description: 'Security fix', color: '#d13438' }
+        };
+
+        const aiInsights = [
+            "This commit follows Microsoft's conventional commit standards perfectly",
+            "Consider adding more specific details about the Azure AD integration scope",
+            "Excellent use of breaking change documentation - this helps with semantic versioning",
+            "The commit message structure is enterprise-ready and will integrate well with Azure DevOps pipelines",
+            "Good practice linking to work items - this improves traceability in Azure Boards"
+        ];
+
+        const teamMetrics = [
+            { label: 'Daily Commit Average', value: '12.4', trend: 'up' },
+            { label: 'Code Review Velocity', value: '2.1 hrs', trend: 'down' },
+            { label: 'Pipeline Success Rate', value: '94.2%', trend: 'up' },
+            { label: 'Security Compliance', value: '98.7%', trend: 'stable' },
+            { label: 'Technical Debt Ratio', value: '8.3%', trend: 'down' },
+            { label: 'Test Coverage', value: '89.1%', trend: 'up' }
+        ];
+
+        // Initialize live metrics with realistic data
+        function initializeLiveMetrics() {
+            document.getElementById('todayCommits').textContent = Math.floor(Math.random() * 20) + 5;
+            document.getElementById('weekCommits').textContent = Math.floor(Math.random() * 100) + 50;
+            document.getElementById('avgScore').textContent = Math.floor(Math.random() * 20) + 75;
+            document.getElementById('compliance').textContent = Math.floor(Math.random() * 10) + 85 + '%';
+        }
+
+        // Advanced AI-powered commit analysis
+        function analyzeWithAI() {
+            const input = document.getElementById('commitInput').value.trim();
+            if (!input) {
+                showNotification('Please enter a commit message to analyze', 'warning');
+                return;
+            }
+
+            showTypingIndicator(true);
+            
+            // Simulate AI processing time
+            setTimeout(() => {
+                showTypingIndicator(false);
+                const analysis = performEnterpriseAnalysis(input);
+                displayEnterpriseResults(analysis);
+                document.getElementById('resultsPanel').classList.add('show');
+            }, 2500);
+        }
+
+        function performEnterpriseAnalysis(commitMessage) {
+            const lines = commitMessage.split('\n').filter(line => line.trim());
+            const firstLine = lines[0] || '';
+            const body = lines.slice(1).join('\n').trim();
+            
+            let score = 100;
+            let complianceScore = 100;
+            let qualityIndex = 10;
+            const issues = [];
+            const insights = [];
+
+            // Advanced conventional commit analysis
+            const conventionalRegex = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|security)(\(.+\))?(!)?: .{1,50}/;
+            const typeMatch = firstLine.match(/^(\w+)(\(.+\))?(!)?: (.+)/);
+            
+            if (!conventionalRegex.test(firstLine)) {
+                if (!typeMatch) {
+                    issues.push({
+                        type: 'error',
+                        title: 'Non-compliant commit format',
+                        description: 'Commit must follow conventional commit specification for Azure DevOps integration.',
+                        recommendation: 'Use format: type(scope): description',
+                        severity: 25,
+                        ruleId: 'CC001'
+                    });
+                    score -= 25;
+                    complianceScore -= 30;
+                } else {
+                    const type = typeMatch[1];
+                    if (!conventionalTypes[type]) {
+                        issues.push({
+                            type: 'error',
+                            title: 'Unknown commit type',
+                            description: `"${type}" is not recognized in Microsoft's commit standards.`,
+                            recommendation: `Use one of: ${Object.keys(conventionalTypes).join(', ')}`,
+                            severity: 20,
+                            ruleId: 'CC002'
+                        });
+                        score -= 20;
+                        complianceScore -= 25;
+                    }
+                }
+            } else {
+                issues.push({
+                    type: 'success',
+                    title: 'Conventional commit format detected',
+                    description: 'Perfect compliance with enterprise commit standards.',
+                    recommendation: 'Keep following this excellent pattern!',
+                    severity: 0,
+                    ruleId: 'CC000'
+                });
+                qualityIndex += 2;
+            }
+
+            // Enterprise-specific validations
+            const subject = typeMatch ? typeMatch[4] : firstLine;
+            
+            // Azure DevOps work item reference check
+            const workItemRegex = /#(DEV|TASK|BUG|FEATURE)-\d+/i;
+            const hasWorkItemRef = workItemRegex.test(commitMessage);
+            
+            if (!hasWorkItemRef) {
+                issues.push({
+                    type: 'warning',
+                    title: 'Missing Azure DevOps work item reference',
+                    description: 'Enterprise policy requires linking commits to work items.',
+                    recommendation: 'Add reference like #DEV-1234 or Closes #TASK-5678',
+                    severity: 15,
+                    ruleId: 'AZ001'
+                });
+                score -= 15;
+                complianceScore -= 20;
+            } else {
+                qualityIndex += 1;
+            }
+
+            // Security and compliance checks
+            const securityKeywords = ['password', 'secret', 'key', 'token', 'credential'];
+            const containsSecurityTerms = securityKeywords.some(keyword => 
+                commitMessage.toLowerCase().includes(keyword));
+            
+            if (containsSecurityTerms) {
+                issues.push({
+                    type: 'error',
+                    title: 'Potential security information exposure',
+                    description: 'Commit message contains security-related terms that should be reviewed.',
+                    recommendation: 'Ensure no sensitive information is exposed in commit messages.',
+                    severity: 30,
+                    ruleId: 'SEC001'
+                });
+                score -= 30;
+                complianceScore -= 40;
+            }
+
+            // Breaking change analysis
+            const hasBreakingChange = /BREAKING CHANGE:/i.test(body) || typeMatch && typeMatch[3] === '!';
+            if (hasBreakingChange) {
+                issues.push({
+                    type: 'info',
+                    title: 'Breaking change detected',
+                    description: 'This commit introduces breaking changes that will increment major version.',
+                    recommendation: 'Ensure proper documentation and team communication.',
+                    severity: 0,
+                    ruleId: 'SV001'
+                });
+                qualityIndex += 1;
+            }
+
+            // Subject length validation
+            if (subject.length > 72) {
+                issues.push({
+                    type: 'error',
+                    title: 'Subject line too long for enterprise tools',
+                    description: `Subject is ${subject.length} characters. Azure DevOps truncates at 72.`,
+                    recommendation: 'Keep subject under 50 characters for optimal display.',
+                    severity: 15,
+                    ruleId: 'LN001'
+                });
+                score -= 15;
+                complianceScore -= 10;
+            }
+
+            // AI-powered sentiment and quality analysis
+            const sentiment = analyzeSentiment(commitMessage);
+            const codeQualityPrediction = predictCodeQuality(commitMessage);
+            
+            insights.push({
+                category: 'Sentiment Analysis',
+                insight: `Commit tone is ${sentiment.tone} (${sentiment.confidence}% confidence)`,
+                recommendation: sentiment.tone === 'negative' ? 'Consider more positive language for team morale' : 'Great professional tone!'
+            });
+
+            insights.push({
+                category: 'Code Quality Prediction',
+                insight: `Predicted code quality impact: ${codeQualityPrediction.impact}`,
+                recommendation: codeQualityPrediction.recommendation
+            });
+
+            // Team productivity insights
+            insights.push({
+                category: 'Team Productivity',
+                insight: 'This commit pattern shows 23% higher productivity correlation',
+                recommendation: 'Share this commit style as a team best practice'
+            });
+
+            // Ensure scores stay within bounds
+            score = Math.max(0, Math.min(100, score));
+            complianceScore = Math.max(0, Math.min(100, complianceScore));
+            qualityIndex = Math.max(0, Math.min(10, qualityIndex));
+
+            return {
+                score,
+                complianceScore,
+                qualityIndex,
+                issues,
+                insights,
+                statistics: {
+                    subjectLength: subject.length,
+                    bodyLines: body ? body.split('\n').length : 0,
+                    totalLines: lines.length,
+                    wordCount: commitMessage.split(/\s+/).length,
+                    type: typeMatch ? typeMatch[1] : 'unknown',
+                    hasScope: typeMatch && typeMatch[2] ? true : false,
+                    hasBreakingChange,
+                    hasWorkItemRef,
+                    sentiment: sentiment.tone,
+                    codeQualityPrediction: codeQualityPrediction.impact
+                }
+            };
+        }
+
+        function analyzeSentiment(text) {
+            const positiveWords = ['add', 'improve', 'enhance', 'optimize', 'implement', 'create', 'update'];
+            const negativeWords = ['fix', 'bug', 'error', 'issue', 'problem', 'broken', 'fail'];
+            
+            const words = text.toLowerCase().split(/\s+/);
+            const positiveCount = words.filter(word => positiveWords.includes(word)).length;
+            const negativeCount = words.filter(word => negativeWords.includes(word)).length;
+            
+            if (positiveCount > negativeCount) {
+                return { tone: 'positive', confidence: 85 };
+            } else if (negativeCount > positiveCount) {
+                return { tone: 'neutral', confidence: 75 };
+            } else {
+                return { tone: 'neutral', confidence: 70 };
+            }
+        }
+
+        function predictCodeQuality(commitMessage) {
+            const qualityIndicators = ['test', 'refactor', 'clean', 'optimize', 'document'];
+            const riskIndicators = ['quick', 'temp', 'hack', 'workaround'];
+            
+            const text = commitMessage.toLowerCase();
+            const hasQualityIndicators = qualityIndicators.some(indicator => text.includes(indicator));
+            const hasRiskIndicators = riskIndicators.some(indicator => text.includes(indicator));
+            
+            if (hasQualityIndicators && !hasRiskIndicators) {
+                return {
+                    impact: 'High Quality',
+                    recommendation: 'Excellent! This commit shows strong quality practices.'
+                };
+            } else if (hasRiskIndicators) {
+                return {
+                    impact: 'Needs Review',
+                    recommendation: 'Consider refactoring temporary solutions for long-term maintainability.'
+                };
+            } else {
+                return {
+                    impact: 'Standard',
+                    recommendation: 'Consider adding tests or documentation for better quality.'
+                };
+            }
+        }
+
+        function displayEnterpriseResults(analysis) {
+            // Update main score display
+            animateNumber('scoreNumber', analysis.score);
+            
+            const scoreGrade = document.getElementById('scoreGrade');
+            if (analysis.score >= 90) {
+                scoreGrade.textContent = 'Enterprise Ready! 🏆';
+                scoreGrade.parentElement.style.background = 'linear-gradient(135deg, var(--ms-teal), #047857)';
+            } else if (analysis.score >= 75) {
+                scoreGrade.textContent = 'Production Ready 👍';
+                scoreGrade.parentElement.style.background = 'linear-gradient(135deg, var(--ms-blue), var(--ms-dark-blue))';
+            } else if (analysis.score >= 60) {
+                scoreGrade.textContent = 'Needs Improvement ⚠️';
+                scoreGrade.parentElement.style.background = 'linear-gradient(135deg, var(--ms-orange), #d97706)';
+            } else {
+                scoreGrade.textContent = 'Policy Violation ❌';
+                scoreGrade.parentElement.style.background = 'linear-gradient(135deg, var(--ms-red), #dc2626)';
+            }
+
+            // Update detailed scores
+            animateNumber('complianceScore', analysis.complianceScore, '%');
+            animateNumber('qualityScore', analysis.qualityIndex);
+
+            // Display issues with enhanced enterprise formatting
+            displayEnterpriseIssues(analysis.issues);
+            
+            // Display AI insights
+            displayAIInsights(analysis.insights);
+            
+            // Display team metrics
+            displayTeamMetrics();
+        }
+
+        function displayEnterpriseIssues(issues) {
+            const issuesList = document.getElementById('issuesList');
+            
+            if (issues.length === 0) {
+                issuesList.innerHTML = `
+                    <div class="issue-item issue-success">
+                        <div class="issue-icon">✓</div>
+                        <div class="issue-content">
+                            <div class="issue-title">Perfect Enterprise Compliance!</div>
+                            <div class="issue-description">Your commit meets all Microsoft enterprise standards and Azure DevOps best practices.</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            issuesList.innerHTML = issues.map(issue => `
+                <div class="issue-item issue-${issue.type}">
+                    <div class="issue-icon">${getEnterpriseIssueIcon(issue.type)}</div>
+                    <div class="issue-content">
+                        <div class="issue-title">${issue.title}</div>
+                        <div class="issue-description">
+                            ${issue.description}<br>
+                            <strong>Recommendation:</strong> ${issue.recommendation}<br>
+                            <small style="color: #605e5c; font-style: italic;">Rule ID: ${issue.ruleId}</small>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayAIInsights(insights) {
+            const container = document.getElementById('copilotSuggestions');
+            
+            container.innerHTML = insights.map(insight => `
+                <div class="suggestion-item">
+                    <strong>${insight.category}:</strong><br>
+                    ${insight.insight}<br>
+                    <em style="color: var(--ms-blue);">${insight.recommendation}</em>
+                </div>
+            `).join('');
+        }
+
+        function displayTeamMetrics() {
+            const container = document.getElementById('teamMetrics');
+            
+            container.innerHTML = teamMetrics.map(metric => `
+                <div class="team-metric">
+                    <div class="team-metric-value">${metric.value}</div>
+                    <div class="team-metric-label">${metric.label}</div>
+                </div>
+            `).join('');
+        }
+
+        function getEnterpriseIssueIcon(type) {
+            const icons = {
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️',
+                success: '✅'
+            };
+            return icons[type] || 'ℹ️';
+        }
+
+        function animateNumber(elementId, targetValue, suffix = '') {
+            const element = document.getElementById(elementId);
+            const startValue = 0;
+            const duration = 1200;
+            const startTime = Date.now();
+            
+            function update() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3); // Cubic ease-out
+                const currentValue = Math.round(startValue + (targetValue - startValue) * eased);
+                
+                element.textContent = currentValue + suffix;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            
+            update();
+        }
+
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        function showTypingIndicator(show) {
+            const indicator = document.getElementById('typingIndicator');
+            indicator.classList.toggle('show', show);
+        }
+
+        function applySuggestion(suggestion) {
+            const textarea = document.getElementById('commitInput');
+            const currentValue = textarea.value;
+            const cursorPosition = textarea.selectionStart;
+            
+            // Insert suggestion at cursor position
+            const beforeCursor = currentValue.substring(0, cursorPosition);
+            const afterCursor = currentValue.substring(cursorPosition);
+            
+            textarea.value = beforeCursor + suggestion + afterCursor;
+            textarea.focus();
+            textarea.setSelectionRange(cursorPosition + suggestion.length, cursorPosition + suggestion.length);
+        }
+
+        function generateCommit() {
+            const templates = [
+                "feat(auth): implement Azure AD single sign-on integration\n\nAdded comprehensive Azure Active Directory authentication with support for enterprise tenants. Includes proper token validation, role-based access control, and seamless user experience.\n\nCloses #DEV-1234",
+                "fix(api): resolve memory leak in data processing pipeline\n\nFixed issue where event listeners were not properly disposed, causing memory accumulation during long-running operations.\n\nFixes #BUG-5678",
+                "perf(db): optimize query performance for user dashboard\n\nRestructured database queries to use proper indexing and reduce N+1 query patterns. Average response time improved by 65%.\n\nCloses #PERF-9012"
+            ];
+            
+            const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+            document.getElementById('commitInput').value = randomTemplate;
+            showNotification('Template loaded! Feel free to customize it.', 'success');
+        }
+
+        function loadTemplate() {
+            generateCommit(); // Reuse the same functionality
+        }
+
+        function exportReport() {
+            showNotification('Exporting analysis report to Azure DevOps...', 'info');
+            // In a real implementation, this would generate and download a report
+        }
+
+        function openCopilotChat() {
+            showNotification('Opening Microsoft Copilot chat interface...', 'info');
+        }
+
+        function viewHistory() {
+            showNotification('Loading commit history analytics...', 'info');
+        }
+
+        function configureRules() {
+            showNotification('Opening enterprise policy configuration...', 'info');
+        }
+
+        function toggleCopilot() {
+            showNotification('Microsoft Copilot is here to help! Ask me anything about your commits.', 'info');
+        }
+
+        function showNotification(message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--ms-teal)' : type === 'warning' ? 'var(--ms-orange)' : 'var(--ms-blue)'};
+                color: white;
+                padding: 16px 20px;
+                border-radius: 8px;
+                box-shadow: var(--shadow-elevated);
+                z-index: 10000;
+                font-weight: 500;
+                max-width: 300px;
+                animation: slideInRight 0.3s ease;
+            `;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeLiveMetrics();
+            
+            // Auto-resize textarea
+            const textarea = document.getElementById('commitInput');
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.max(160, this.scrollHeight) + 'px';
+            });
+            
+            // Enterprise keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey)) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        analyzeWithAI();
+                    } else if (e.key === 'g') {
+                        e.preventDefault();
+                        generateCommit();
+                    } else if (e.key === 'e') {
+                        e.preventDefault();
+                        exportReport();
+                    }
+                }
+            });
+            
+            // Update live metrics every 30 seconds
+            setInterval(initializeLiveMetrics, 30000);
+        });
+
+        // Add CSS animations for notifications
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOutRight {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
