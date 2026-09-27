@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Commit Message Linter Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .input-section:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.1);
+        }
+
+        .input-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .commit-input {
+            width: 100%;
+            min-height: 200px;
+            padding: 20px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+            background: white;
+        }
+
+        .commit-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .analyze-btn:active {
+            transform: translateY(0);
+        }
+
+        .results-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            min-height: 300px;
+        }
+
+        .results-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .score-display {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #e1e5e9;
+        }
+
+        .score-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .score-excellent { background: linear-gradient(135deg, #4CAF50, #45a049); }
+        .score-good { background: linear-gradient(135deg, #2196F3, #1976D2); }
+        .score-warning { background: linear-gradient(135deg, #FF9800, #F57C00); }
+        .score-error { background: linear-gradient(135deg, #f44336, #d32f2f); }
+
+        .findings {
+            margin-top: 20px;
+        }
+
+        .finding {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        .finding:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .finding-error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+
+        .finding-warning {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+
+        .finding-info {
+            background: #e3f2fd;
+            border-left-color: #2196f3;
+        }
+
+        .finding-success {
+            background: #e8f5e8;
+            border-left-color: #4caf50;
+        }
+
+        .finding-icon {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .finding-content h4 {
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        .finding-content p {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e1e5e9;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.1);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .examples-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        .examples-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .example-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #e1e5e9;
+            transition: all 0.3s ease;
+        }
+
+        .example-card:hover {
+            border-color: #4caf50;
+            transform: translateY(-2px);
+        }
+
+        .example-code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        .features-section {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #e1e5e9;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(102, 126, 234, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e1e5e9;
+            border-radius: 4px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.8s ease;
+        }
+
+        .sample-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .sample-btn {
+            background: #e9ecef;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .sample-btn:hover {
+            background: #dee2e6;
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Git Commit Message Linter Pro</h1>
+            <p>Professional-grade commit message analysis with conventional commit standards</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <h2>📝 Commit Message Input</h2>
+                <textarea 
+                    id="commitInput" 
+                    class="commit-input" 
+                    placeholder="Paste your git commit message here...
+
+Example:
+feat(user-auth): add OAuth2 integration with Google
+
+- Implement Google OAuth2 authentication flow
+- Add user profile synchronization
+- Update login UI with Google sign-in button
+- Add comprehensive error handling
+
+Closes #123
+Co-authored-by: Jane Doe <jane@example.com>"
+                ></textarea>
+                <button class="analyze-btn" onclick="analyzeCommit()">🔍 Analyze Commit</button>
+                
+                <div class="sample-selector">
+                    <strong>Try samples:</strong>
+                    <button class="sample-btn" onclick="loadSampleCommit(0)">Feature</button>
+                    <button class="sample-btn" onclick="loadSampleCommit(1)">Bug Fix</button>
+                    <button class="sample-btn" onclick="loadSampleCommit(2)">Documentation</button>
+                    <button class="sample-btn" onclick="loadSampleCommit(3)">Poor Example</button>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <h2>📊 Analysis Results</h2>
+                <div id="resultsContent">
+                    <div class="empty-state">
+                        <p>Enter a commit message and click "Analyze Commit" to see detailed analysis</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="totalScore">0</div>
+                <div class="stat-label">Overall Score</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lineCount">0</div>
+                <div class="stat-label">Total Lines</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="subjectLength">0</div>
+                <div class="stat-label">Subject Length</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="issuesFound">0</div>
+                <div class="stat-label">Issues Found</div>
+            </div>
+        </div>
+
+        <div class="examples-section">
+            <h2>✨ Best Practice Examples</h2>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <h3>🎯 Feature Addition</h3>
+                    <div class="example-code">feat(auth): add two-factor authentication
+
+Implement TOTP-based 2FA for enhanced security
+- Add QR code generation for authenticator apps
+- Include backup codes for account recovery
+- Update user settings UI
+
+Closes #456</div>
+                </div>
+                <div class="example-card">
+                    <h3>🐛 Bug Fix</h3>
+                    <div class="example-code">fix(api): resolve memory leak in user session handler
+
+Fix memory leak caused by event listeners not being properly cleaned up
+- Remove event listeners on session destruction
+- Add proper garbage collection for session objects
+- Include comprehensive unit tests
+
+Fixes #789</div>
+                </div>
+                <div class="example-card">
+                    <h3>📚 Documentation</h3>
+                    <div class="example-code">docs(api): update authentication endpoint documentation
+
+- Add examples for OAuth2 flow
+- Include error response formats
+- Update rate limiting information</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <h2>🛠️ Advanced Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Conventional Commits</h3>
+                    <p>Full compliance checking with conventional commit specification</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📏</div>
+                    <h3>Length Validation</h3>
+                    <p>Subject and body length validation with industry best practices</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>Deep Analysis</h3>
+                    <p>Sentiment analysis, readability scoring, and formatting checks</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Real-time Feedback</h3>
+                    <p>Instant validation with severity levels and actionable suggestions</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Comprehensive commit message analysis system
+        class CommitLinter {
+            constructor() {
+                this.conventionalTypes = [
+                    'feat', 'fix', 'docs', 'style', 'refactor', 'perf', 
+                    'test', 'build', 'ci', 'chore', 'revert'
+                ];
+                this.breakingChangeIndicators = ['!', 'BREAKING CHANGE', 'BREAKING-CHANGE'];
+                this.findings = [];
+                this.score = 0;
+                this.maxScore = 100;
+            }
+
+            analyze(commitMessage) {
+                this.findings = [];
+                this.score = 0;
+
+                if (!commitMessage.trim()) {
+                    this.addFinding('error', 'Empty Commit', 'Commit message cannot be empty', '❌');
+                    return this.getResults();
+                }
+
+                const lines = commitMessage.split('\n');
+                const subject = (lines[0] || '').trim();
+                let body = '';
+                
+                // Find the body start index
+                let bodyStartIndex = 1;
+                while (bodyStartIndex < lines.length && lines[bodyStartIndex].trim() === '') {
+                    bodyStartIndex++;
+                }
+                
+                // Extract the body
+                if (bodyStartIndex < lines.length) {
+                    body = lines.slice(bodyStartIndex).join('\n');
+                }
+
+                // Analyze different aspects
+                this.analyzeSubject(subject);
+                this.analyzeBody(body, lines, bodyStartIndex);
+                this.analyzeConventionalFormat(subject);
+                this.analyzeMetadata(commitMessage);
+                this.analyzeSentiment(commitMessage);
+                this.analyzeFormatting(commitMessage);
+
+                return this.getResults();
+            }
+
+            analyzeSubject(subject) {
+                // Length check
+                if (subject.length > 72) {
+                    this.addFinding('error', 'Subject Too Long', 
+                        `Subject is ${subject.length} characters. Keep it under 72 characters.`, '📏');
+                } else if (subject.length > 50) {
+                    this.addFinding('warning', 'Subject Length Warning', 
+                        `Subject is ${subject.length} characters. Consider keeping it under 50 for better readability.`, '⚠️');
+                } else {
+                    this.addFinding('success', 'Good Subject Length', 
+                        `Subject length (${subject.length} chars) follows best practices.`, '✅');
+                    this.score += 15;
+                }
+
+                // Capitalization
+                if (subject[0] && subject[0] === subject[0].toLowerCase()) {
+                    // Check if it starts with conventional commit type
+                    const hasConventionalPrefix = this.conventionalTypes.some(type => 
+                        subject.toLowerCase().startsWith(type + '(') || 
+                        subject.toLowerCase().startsWith(type + ':')
+                    );
+                    
+                    if (!hasConventionalPrefix) {
+                        this.addFinding('warning', 'Capitalization', 
+                            'Subject should start with a capital letter (unless using conventional commits).', '🔤');
+                    }
+                } else if (subject[0] && subject[0] === subject[0].toUpperCase()) {
+                    this.addFinding('success', 'Proper Capitalization', 
+                        'Subject follows proper capitalization rules.', '✅');
+                    this.score += 10;
+                }
+
+                // Ending punctuation
+                if (subject.endsWith('.') || subject.endsWith('!') || subject.endsWith('?')) {
+                    this.addFinding('warning', 'Ending Punctuation', 
+                        'Avoid ending the subject line with punctuation.', '❗');
+                } else {
+                    this.addFinding('success', 'No Ending Punctuation', 
+                        'Subject correctly avoids ending punctuation.', '✅');
+                    this.score += 10;
+                }
+
+                // Imperative mood check
+                this.analyzeImperativeMood(subject);
+            }
+
+            analyzeImperativeMood(subject) {
+                const imperativeWords = ['add', 'fix', 'update', 'remove', 'create', 'implement', 'refactor', 'optimize', 'improve', 'enhance'];
+                const nonImperativePatterns = ['added', 'fixing', 'fixed', 'updates', 'updated', 'removed', 'created', 'implemented', 'refactored', 'optimized'];
+                
+                // Extract the first word
+                const firstWordMatch = subject.match(/^\w+/);
+                if (!firstWordMatch) return;
+                
+                const firstWord = firstWordMatch[0].toLowerCase();
+                
+                if (nonImperativePatterns.includes(firstWord)) {
+                    this.addFinding('warning', 'Imperative Mood', 
+                        `Use imperative mood (e.g., "fix" instead of "${firstWord}").`, '📝');
+                } else if (imperativeWords.includes(firstWord)) {
+                    this.addFinding('success', 'Imperative Mood', 
+                        'Subject uses proper imperative mood.', '✅');
+                    this.score += 15;
+                }
+            }
+
+            analyzeConventionalFormat(subject) {
+                const conventionalRegex = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?(!)?\s*:\s*.+/;
+                const match = subject.match(conventionalRegex);
+
+                if (match) {
+                    this.addFinding('success', 'Conventional Commits Format', 
+                        'Follows conventional commits specification.', '✅');
+                    this.score += 20;
+
+                    const type = match[1];
+                    const scope = match[2];
+                    const breaking = match[3];
+                    
+                    if (scope) {
+                        this.addFinding('success', 'Scope Provided', 
+                            `Good use of scope: ${scope}`, '🎯');
+                        this.score += 10;
+                    }
+
+                    if (breaking) {
+                        this.addFinding('info', 'Breaking Change', 
+                            'Breaking change indicator found.', '⚠️');
+                    }
+                } else {
+                    this.addFinding('warning', 'Conventional Commits Format', 
+                        'Consider using conventional commits format (type: description).', '📋');
+                }
+            }
+
+            analyzeBody(body, allLines, bodyStartIndex) {
+                if (body.trim()) {
+                    // Check for blank line between subject and body
+                    if (bodyStartIndex === 1) {
+                        this.addFinding('error', 'Missing Blank Line', 
+                            'Include a blank line between subject and body.', '📄');
+                    } else {
+                        this.addFinding('success', 'Proper Formatting', 
+                            'Proper blank line separation between subject and body.', '✅');
+                        this.score += 10;
+                    }
+
+                    // Body line length check
+                    const bodyLines = body.split('\n');
+                    const longLines = bodyLines.filter(line => {
+                        const trimmed = line.trim();
+                        return trimmed.length > 0 && line.length > 72;
+                    });
+                    
+                    if (longLines.length > 0) {
+                        this.addFinding('warning', 'Body Line Length', 
+                            `${longLines.length} body lines exceed 72 characters.`, '📏');
+                    } else {
+                        this.addFinding('success', 'Body Line Length', 
+                            'Body lines follow 72-character limit.', '✅');
+                        this.score += 10;
+                    }
+
+                    // Check for bullet points or structured content
+                    if (body.includes('-') || body.includes('*') || body.includes('•')) {
+                        this.addFinding('success', 'Structured Content', 
+                            'Good use of bullet points for clarity.', '📝');
+                        this.score += 10;
+                    }
+                } else {
+                    this.addFinding('info', 'No Body Content', 
+                        'Consider adding a body to explain the "what" and "why".', '💭');
+                }
+            }
+
+            analyzeMetadata(commitMessage) {
+                // Check for issue references
+                const issuePatterns = [
+                    /closes?\s+#\d+/gi,
+                    /fixes?\s+#\d+/gi,
+                    /resolves?\s+#\d+/gi,
+                    /#\d+/g
+                ];
+
+                let hasIssueReference = false;
+                issuePatterns.forEach(pattern => {
+                    if (pattern.test(commitMessage)) {
+                        hasIssueReference = true;
+                    }
+                });
+
+                if (hasIssueReference) {
+                    this.addFinding('success', 'Issue Reference', 
+                        'Good practice linking to related issues.', '🔗');
+                    this.score += 10;
+                }
+
+                // Check for co-authors
+                if (commitMessage.includes('Co-authored-by:')) {
+                    this.addFinding('success', 'Co-authored', 
+                        'Proper attribution to co-authors.', '👥');
+                    this.score += 5;
+                }
+
+                // Check for breaking changes in body
+                if (commitMessage.toLowerCase().includes('breaking change')) {
+                    this.addFinding('info', 'Breaking Change Documentation', 
+                        'Breaking change properly documented in body.', '⚠️');
+                }
+            }
+
+            analyzeSentiment(commitMessage) {
+                const positiveWords = ['add', 'improve', 'enhance', 'optimize', 'implement', 'create', 'support'];
+                const negativeWords = ['remove', 'delete', 'fix', 'repair', 'resolve', 'disable'];
+                const neutralWords = ['update', 'change', 'modify', 'refactor', 'adjust'];
+
+                const lowerMessage = commitMessage.toLowerCase();
+                const hasPositive = positiveWords.some(word => lowerMessage.includes(word));
+                const hasNegative = negativeWords.some(word => lowerMessage.includes(word));
+                const hasNeutral = neutralWords.some(word => lowerMessage.includes(word));
+
+                if (hasPositive) {
+                    this.addFinding('success', 'Positive Action', 
+                        'Commit represents positive development action.', '🚀');
+                    this.score += 5;
+                } else if (hasNegative) {
+                    this.addFinding('info', 'Corrective Action', 
+                        'Commit represents corrective or cleanup action.', '🔧');
+                } else if (hasNeutral) {
+                    this.addFinding('info', 'Maintenance Action', 
+                        'Commit represents maintenance or refactoring.', '⚙️');
+                }
+            }
+
+            analyzeFormatting(commitMessage) {
+                // Check for consistent indentation
+                const lines = commitMessage.split('\n');
+                let hasConsistentBullets = true;
+                let bulletStyle = null;
+
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('-') || trimmed.startsWith('*') || trimmed.startsWith('•')) {
+                        const currentStyle = trimmed[0];
+                        if (bulletStyle === null) {
+                            bulletStyle = currentStyle;
+                        } else if (bulletStyle !== currentStyle) {
+                            hasConsistentBullets = false;
+                        }
+                    }
+                });
+
+                if (bulletStyle && hasConsistentBullets) {
+                    this.addFinding('success', 'Consistent Formatting', 
+                        'Consistent bullet point style used.', '✅');
+                    this.score += 5;
+                } else if (bulletStyle && !hasConsistentBullets) {
+                    this.addFinding('warning', 'Inconsistent Formatting', 
+                        'Mixed bullet point styles detected.', '⚠️');
+                }
+
+                // Check for proper spacing
+                let hasProperSpacing = true;
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    if (line.trim().startsWith('-') || line.trim().startsWith('*') || line.trim().startsWith('•')) {
+                        if (!line.match(/^\s*[-*•]\s+/)) {
+                            hasProperSpacing = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasProperSpacing) {
+                    this.addFinding('success', 'Proper Spacing', 
+                        'Consistent spacing in bullet points.', '✅');
+                    this.score += 5;
+                } else {
+                    this.addFinding('warning', 'Inconsistent Spacing', 
+                        'Inconsistent spacing in bullet points.', '⚠️');
+                }
+            }
+
+            addFinding(severity, title, description, emoji) {
+                this.findings.push({
+                    severity,
+                    title,
+                    description,
+                    emoji
+                });
+            }
+
+            getResults() {
+                return {
+                    score: Math.min(this.score, this.maxScore),
+                    maxScore: this.maxScore,
+                    findings: this.findings,
+                    grade: this.calculateGrade()
+                };
+            }
+
+            calculateGrade() {
+                const percentage = (this.score / this.maxScore) * 100;
+                if (percentage >= 90) return { level: 'excellent', text: 'Excellent' };
+                if (percentage >= 75) return { level: 'good', text: 'Good' };
+                if (percentage >= 60) return { level: 'warning', text: 'Needs Improvement' };
+                return { level: 'error', text: 'Poor' };
+            }
+        }
+
+        const linter = new CommitLinter();
+
+        function analyzeCommit() {
+            const input = document.getElementById('commitInput').value;
+            const results = linter.analyze(input);
+            
+            displayResults(results, input);
+            updateStats(results, input);
+        }
+
+        function displayResults(results, commitMessage) {
+            const resultsContent = document.getElementById('resultsContent');
+            
+            let html = `
+                <div class="score-display">
+                    <div class="score-circle score-${results.grade.level}">
+                        ${results.score}%
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${results.score}%"></div>
+                    </div>
+                    <h3>${results.grade.text}</h3>
+                    <p>Overall commit message quality score</p>
+                </div>
+                
+                <div class="findings">
+            `;
+
+            if (results.findings.length === 0) {
+                html += '<div class="empty-state"><p>No issues found! Perfect commit message.</p></div>';
+            } else {
+                results.findings.forEach(finding => {
+                    html += `
+                        <div class="finding finding-${finding.severity}">
+                            <div class="finding-icon">${finding.emoji}</div>
+                            <div class="finding-content">
+                                <h4>${finding.title}</h4>
+                                <p>${finding.description}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += '</div>';
+            resultsContent.innerHTML = html;
+        }
+
+        function updateStats(results, commitMessage) {
+            const statsGrid = document.getElementById('statsGrid');
+            const lines = commitMessage.split('\n');
+            const subject = (lines[0] || '').trim();
+            const errorCount = results.findings.filter(f => f.severity === 'error').length;
+            const warningCount = results.findings.filter(f => f.severity === 'warning').length;
+            
+            document.getElementById('totalScore').textContent = `${results.score}%`;
+            document.getElementById('lineCount').textContent = lines.length;
+            document.getElementById('subjectLength').textContent = subject.length;
+            document.getElementById('issuesFound').textContent = errorCount + warningCount;
+            
+            statsGrid.style.display = 'grid';
+        }
+
+        // Auto-analyze on input (debounced)
+        let analysisTimeout;
+        document.getElementById('commitInput').addEventListener('input', function() {
+            clearTimeout(analysisTimeout);
+            analysisTimeout = setTimeout(() => {
+                if (this.value.trim()) {
+                    analyzeCommit();
+                }
+            }, 1000);
+        });
+
+        // Sample commit messages for quick testing
+        const sampleCommits = [
+            `feat(auth): add OAuth2 integration with Google
+
+- Implement Google OAuth2 authentication flow
+- Add user profile synchronization  
+- Update login UI with Google sign-in button
+- Add comprehensive error handling
+
+Closes #123
+Co-authored-by: Jane Doe <jane@example.com>`,
+
+            `fix: memory leak in session handler
+
+Fix memory leak caused by event listeners not being properly cleaned up in the user session management system.
+
+- Remove event listeners on session destruction
+- Add proper garbage collection for session objects  
+- Include comprehensive unit tests for session lifecycle
+
+Fixes #456`,
+
+            `docs(api): update authentication endpoints
+
+- Add examples for OAuth2 flow
+- Include error response formats
+- Update rate limiting information
+- Fix typos in existing documentation`,
+
+            `This is a bad commit message with no structure and way too long of a subject line that exceeds recommended limits.
+
+No proper formatting or structure here either.`
+        ];
+
+        // Add sample commit loader
+        function loadSampleCommit(index) {
+            if (index >= 0 && index < sampleCommits.length) {
+                document.getElementById('commitInput').value = sampleCommits[index];
+                analyzeCommit();
+            }
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                analyzeCommit();
+            }
+        });
+
+        // Initialize with a sample commit
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('commitInput').value = sampleCommits[0];
+            analyzeCommit();
+        });
+    </script>
+</body>
+</html>
